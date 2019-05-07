@@ -8,6 +8,7 @@ import org.apache.flink.core.fs.CloseableRegistry;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.query.TaskKvStateRegistry;
 import org.apache.flink.runtime.state.*;
+import org.apache.flink.runtime.state.StateSnapshotTransformer.StateSnapshotTransformFactory;
 import org.apache.flink.runtime.state.heap.HeapPriorityQueueElement;
 import org.apache.flink.runtime.state.ttl.TtlTimeProvider;
 import org.apache.flink.util.FlinkRuntimeException;
@@ -22,6 +23,7 @@ import java.util.stream.Stream;
 
 public class PlayKeyedStateBackend<K> extends AbstractKeyedStateBackend<K> {
 
+    private PlayStateBackend playStateBackend;
 
     private interface StateFactory {
         <K, N, SV, S extends State, IS extends S> IS createState(
@@ -81,8 +83,49 @@ public class PlayKeyedStateBackend<K> extends AbstractKeyedStateBackend<K> {
             TypeSerializer<N> namespaceSerializer,
             StateSnapshotTransformer.StateSnapshotTransformFactory<SEV> snapshotTransformFactory
     ) {
+        System.out.println("stateDesc = [" + stateDesc + "], namespaceSerializer = [" + namespaceSerializer + "], snapshotTransformFactory = [" + snapshotTransformFactory + "]");
 
-        return null;
+        RocksDbKvStateInfo oldStateInfo = kvStateInformation.get(stateDesc.getName());
+
+        TypeSerializer<SV> stateSerializer = stateDesc.getSerializer();
+
+        RocksDbKvStateInfo newRocksStateInfo;
+        RegisteredKeyValueStateBackendMetaInfo<N, SV> newMetaInfo;
+        if (oldStateInfo != null) {
+            @SuppressWarnings("unchecked")
+            RegisteredKeyValueStateBackendMetaInfo<N, SV> castedMetaInfo =
+                    (RegisteredKeyValueStateBackendMetaInfo<N, SV>) oldStateInfo.metaInfo;
+
+            newMetaInfo = updateRestoredStateMetaInfo(
+                    Tuple2.of(oldStateInfo.columnFamilyHandle, castedMetaInfo),
+                    stateDesc,
+                    namespaceSerializer,
+                    stateSerializer);
+
+            newRocksStateInfo = new RocksDbKvStateInfo(oldStateInfo.columnFamilyHandle, newMetaInfo);
+            kvStateInformation.put(stateDesc.getName(), newRocksStateInfo);
+        } else {
+            newMetaInfo = new RegisteredKeyValueStateBackendMetaInfo<>(
+                    stateDesc.getType(),
+                    stateDesc.getName(),
+                    namespaceSerializer,
+                    stateSerializer,
+                    StateSnapshotTransformFactory.noTransform());
+
+            newRocksStateInfo = RocksDBOperationUtils.createStateInfo(
+                    newMetaInfo, db, columnFamilyOptionsFactory, ttlCompactFiltersManager);
+            RocksDBOperationUtils.registerKvStateInformation(this.kvStateInformation, this.nativeMetricMonitor,
+                    stateDesc.getName(), newRocksStateInfo);
+        }
+
+        StateSnapshotTransformFactory<SV> wrappedSnapshotTransformFactory = wrapStateSnapshotTransformFactory(
+                stateDesc, snapshotTransformFactory, newMetaInfo.getStateSerializer());
+        newMetaInfo.updateSnapshotTransformFactory(wrappedSnapshotTransformFactory);
+
+        ttlCompactFiltersManager.configCompactFilter(stateDesc, newMetaInfo.getStateSerializer());
+
+        //return Tuple2.of(newRocksStateInfo.columnFamilyHandle, newMetaInfo);
+        return Tuple2.of(playStateBackend.getPlayConnection(),newMetaInfo);
     }
 
     @Nonnull
@@ -95,5 +138,10 @@ public class PlayKeyedStateBackend<K> extends AbstractKeyedStateBackend<K> {
     @Override
     public RunnableFuture<SnapshotResult<KeyedStateHandle>> snapshot(long checkpointId, long timestamp, @Nonnull CheckpointStreamFactory streamFactory, @Nonnull CheckpointOptions checkpointOptions) throws Exception {
         return null;
+    }
+
+
+    public void setPlayStateBackend(PlayStateBackend playStateBackend) {
+        this.playStateBackend = playStateBackend;
     }
 }

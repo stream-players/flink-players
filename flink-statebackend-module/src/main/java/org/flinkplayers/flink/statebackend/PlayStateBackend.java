@@ -42,8 +42,29 @@ public class PlayStateBackend implements StateBackend, ConfigurableStateBackend 
     }
 
     @Override
-    public <K> AbstractKeyedStateBackend<K> createKeyedStateBackend(Environment env, JobID jobID, String operatorIdentifier, TypeSerializer<K> keySerializer, int numberOfKeyGroups, KeyGroupRange keyGroupRange, TaskKvStateRegistry kvStateRegistry, TtlTimeProvider ttlTimeProvider, MetricGroup metricGroup, @Nonnull Collection<KeyedStateHandle> stateHandles, CloseableRegistry cancelStreamRegistry) throws Exception {
-        return null;
+    public <K> AbstractKeyedStateBackend<K> createKeyedStateBackend(
+            Environment env,
+            JobID jobID,
+            String operatorIdentifier,
+            TypeSerializer<K> keySerializer,
+            int numberOfKeyGroups,
+            KeyGroupRange keyGroupRange,
+            TaskKvStateRegistry kvStateRegistry,
+            TtlTimeProvider ttlTimeProvider,
+            MetricGroup metricGroup,
+            @Nonnull Collection<KeyedStateHandle> stateHandles,
+            CloseableRegistry cancelStreamRegistry) {
+        PlayKeyedStateBackend<K> playKeyedStateBackend = new PlayKeyedStateBackend<>(
+                env.getTaskKvStateRegistry(),
+                keySerializer,
+                env.getUserClassLoader(),
+                numberOfKeyGroups,
+                keyGroupRange,
+                env.getExecutionConfig(),
+                ttlTimeProvider,
+                cancelStreamRegistry);
+        playKeyedStateBackend.setPlayStateBackend(this);
+        return playKeyedStateBackend;
     }
 
     @Override
