@@ -7,9 +7,10 @@
     <groupId>org.flinkplayers.flink</groupId>
     <artifactId>flink-players</artifactId>
     <packaging>pom</packaging>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.8.0</version>
     <modules>
         <module>flink-statebackend-module</module>
+        <module>player-module-examples</module>
     </modules>
 
 
