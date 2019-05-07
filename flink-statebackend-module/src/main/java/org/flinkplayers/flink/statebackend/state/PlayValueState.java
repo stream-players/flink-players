@@ -66,7 +66,7 @@ public class PlayValueState<K, N, V> extends AbstractPlayStae<K, N, V> implement
     }
 
     @SuppressWarnings("unchecked")
-    static <K, N, SV, S extends State, IS extends S> IS create(
+    public static <K, N, SV, S extends State, IS extends S> IS create(
             StateDescriptor<S, SV> stateDesc,
             Tuple2<PlayConnection, RegisteredKeyValueStateBackendMetaInfo<N, SV>> registerResult,
             PlayKeyedStateBackend<K> backend) {

@@ -56,6 +56,7 @@ public class PlayStateBackend implements StateBackend, ConfigurableStateBackend 
         if (this.getConfiguration() != null) {
             configuration.addAll(this.getConfiguration());
         }
+        System.out.println("Refoncig: " + configuration +"\t" + Thread.currentThread().getName());
         return new PlayStateBackend(configuration, classLoader);
     }
 

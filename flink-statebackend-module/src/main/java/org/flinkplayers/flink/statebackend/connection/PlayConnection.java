@@ -4,6 +4,6 @@ import org.apache.flink.configuration.Configuration;
 
 public interface PlayConnection {
 
-    void init(Configuration configuration);
+    void initializeState(Configuration configuration);
 
 }
