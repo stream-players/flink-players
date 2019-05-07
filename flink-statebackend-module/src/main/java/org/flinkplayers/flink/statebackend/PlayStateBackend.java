@@ -10,6 +10,7 @@ import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.query.TaskKvStateRegistry;
 import org.apache.flink.runtime.state.*;
 import org.apache.flink.runtime.state.ttl.TtlTimeProvider;
+import org.flinkplayers.flink.statebackend.connection.PlayConnection;
 
 import javax.annotation.Nonnull;
 import java.io.IOException;
@@ -20,6 +21,10 @@ public class PlayStateBackend implements StateBackend, ConfigurableStateBackend 
     private Configuration configuration;
     private ClassLoader classLoader;
 
+    private PlayConnection playConnection;
+
+    public PlayStateBackend() {
+    }
 
     public PlayStateBackend(Configuration configuration, ClassLoader classLoader) {
         this.configuration = configuration;
@@ -73,5 +78,13 @@ public class PlayStateBackend implements StateBackend, ConfigurableStateBackend 
 
     public void setClassLoader(ClassLoader classLoader) {
         this.classLoader = classLoader;
+    }
+
+    public PlayConnection getPlayConnection() {
+        return playConnection;
+    }
+
+    public void setPlayConnection(PlayConnection playConnection) {
+        this.playConnection = playConnection;
     }
 }
